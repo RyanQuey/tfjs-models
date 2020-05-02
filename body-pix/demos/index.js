@@ -20,6 +20,7 @@ import Stats from 'stats.js';
 
 import {drawKeypoints, drawSkeleton, toggleLoadingUI, TRY_RESNET_BUTTON_NAME, TRY_RESNET_BUTTON_TEXT, updateTryResNetButtonDatGuiCss} from './demo_util';
 import * as partColorScales from './part_color_scales';
+import * as waveHelpers from './check_for_wave'; 
 
 
 const stats = new Stats();
@@ -35,7 +36,13 @@ const state = {
   changingStride: false,
   changingResolution: false,
   changingQuantBytes: false,
+  leftArmLog: [],
 };
+
+const logSegmentationLog = setInterval(() => {
+  // console.log("left hand log (keeps 100): ", state.leftArmLog)
+  waveHelpers.generateChart(state.leftArmLog)
+}, 1000)
 
 function isAndroid() {
   return /Android/i.test(navigator.userAgent);
@@ -163,8 +170,10 @@ const defaultResNetMultiplier = 1.0;
 const defaultResNetStride = 16;
 const defaultResNetInternalResolution = 'low';
 
+// sets defaults for settings
 const guiState = {
-  algorithm: 'multi-person-instance',
+  // default start at single person
+  algorithm: 'person', // 'multi-person-instance',
   estimate: 'partmap',
   camera: null,
   flipHorizontal: true,
@@ -543,9 +552,10 @@ async function estimateSegmentation() {
 }
 
 async function estimatePartSegmentation() {
+  let segmentation 
   switch (guiState.algorithm) {
     case 'multi-person-instance':
-      return await state.net.segmentMultiPersonParts(state.video, {
+      segmentation = await state.net.segmentMultiPersonParts(state.video, {
         internalResolution: guiState.input.internalResolution,
         segmentationThreshold: guiState.segmentation.segmentationThreshold,
         maxDetections: guiState.multiPersonDecoding.maxDetections,
@@ -556,7 +566,7 @@ async function estimatePartSegmentation() {
         refineSteps: guiState.multiPersonDecoding.refineSteps
       });
     case 'person':
-      return await state.net.segmentPersonParts(state.video, {
+      segmentation = await state.net.segmentPersonParts(state.video, {
         internalResolution: guiState.input.internalResolution,
         segmentationThreshold: guiState.segmentation.segmentationThreshold,
         maxDetections: guiState.multiPersonDecoding.maxDetections,
@@ -566,7 +576,11 @@ async function estimatePartSegmentation() {
     default:
       break;
   };
-  return multiPersonPartSegmentation;
+
+  const leftArmSegmentation = waveHelpers.extractLeftArm(segmentation)
+  waveHelpers.queueLatestLog(leftArmSegmentation, state.leftArmLog)
+
+  return segmentation
 }
 
 function drawPoses(personOrPersonPartSegmentation, flipHorizontally, ctx) {
@@ -632,6 +646,7 @@ function segmentBodyInRealTime() {
     switch (guiState.estimate) {
       case 'segmentation':
         const multiPersonSegmentation = await estimateSegmentation();
+
         switch (guiState.segmentation.effect) {
           case 'mask':
             const ctx = canvas.getContext('2d');
