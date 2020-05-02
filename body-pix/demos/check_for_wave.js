@@ -24,10 +24,11 @@ const LEFT_ARM_PARTS = [
   "leftElbow",
 ]
 
-// want to keep just last 100 or so, so make a queue
+const MAX_LOG_LENGTH = 25
+// want to keep just last several, so make a queue
 // TODO get more performant queue implementation
 export function queueLatestLog(log, logArr) {
-  if (logArr.length > 99) {
+  if (logArr.length > MAX_LOG_LENGTH - 1) {
     logArr.shift()
   }
   logArr.push(log)
@@ -50,18 +51,18 @@ export function extractLeftArm(segmentation) {
 // TODO maybe start by only following the wrist, to see if we can get a picture of what kind of
 // wrist movements are approximately a wave
 var ctx = document.getElementById('myChart').getContext('2d');
-ctx.height = 500
-ctx.width = 500
+ctx.height = 400
+ctx.width = 400
 
 const myChart = new Chart(ctx, {
   type: 'line',
   data: {
-    labels: [...Array(100).keys()],
+    labels: [...Array(MAX_LOG_LENGTH).keys()],
     // TODO store/retrieve this data more efficiently
     // One dataset per arm part
     datasets: LEFT_ARM_PARTS.map((partKey, partIndex) => ({
       label: partKey,
-      data: {x: 100, y: 100},
+      data: [],
       backgroundColor: [
         'rgba(255, 99, 132, 0.2)',
         'rgba(54, 162, 235, 0.2)',
@@ -86,8 +87,8 @@ const myChart = new Chart(ctx, {
       yAxes: [{
         ticks: {
           beginAtZero: true,
-          stepSize: 50,
-          suggestedMax: 550 // size of pixels we're showing, which is therefore max we'll get 
+          stepSize: 100,
+          suggestedMax: 700 // size of pixels we're showing, which is therefore max we'll get. Video is 640x480, so x coordinates should max out at 640 (the far left) and min should be 0 (far right)???
         }
       }]
     }

@@ -40,7 +40,6 @@ const state = {
 };
 
 const logSegmentationLog = setInterval(() => {
-  // console.log("left hand log (keeps 100): ", state.leftArmLog)
   waveHelpers.generateChart(state.leftArmLog)
 }, 1000)
 
